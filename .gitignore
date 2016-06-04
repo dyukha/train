@@ -1,4 +1,12 @@
+*.png
+*.jpg
+
+*.o
+*.suo
+*.dll
+*.exe
 *.class
+*out.txt
 
 # Mobile Tools for Java (J2ME)
 .mtj.tmp/

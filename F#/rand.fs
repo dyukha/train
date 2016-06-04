@@ -1,0 +1,1 @@
+printf "%d" ((new System.Random()).Next 6 + 1)

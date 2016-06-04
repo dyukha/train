@@ -1,0 +1,101 @@
+module xFormer.Translator.Traversals.PLDateFormat
+
+open xFormer.Translator
+open xFormer.Translator.SqlNodes
+open xFormer.Translator.Utils
+
+let private replace (pat, res:string) init = System.Text.RegularExpressions.Regex.Replace(init, pat, res)
+let private separators = "/. -:".ToCharArray()
+let private split (s : string) = s.Split separators
+let private sql2NetFormat = id
+
+type private DatePart =
+    | Year | Month | Day | Hour | Minute | Second | Unknown
+
+let private isTimePart = function
+    | Hour | Minute | Second -> true
+    | _ -> false
+
+let private isDatePart = function
+    | Year | Month | Day -> true
+    | _ -> false
+
+let private formatToPart (format : string) =
+    if format.Length = 0 then Unknown
+    else
+        match format.[0] with
+        | 'Y' -> Year
+        | 'D' -> Day
+        | 'M' ->
+            match format with
+            | "MM" | "MONTH" | "MON" -> Month
+            | _ -> Minute
+        | 'H' -> Hour
+        | 'S' -> Second
+        | _ -> Unknown
+
+type private DateTime (date : string [], format : string []) =
+    let mutable year = "0000"
+    let mutable month = "00"
+    let mutable day = "00"
+    let mutable hour = "00"
+    let mutable minute = "00"
+    let mutable second = "00"
+
+    let mutable hasDate = false
+    let mutable hasTime = false
+    let mutable correct = false
+
+    let changePart value part =
+        match formatToPart part with
+        | Year -> year <- value; hasDate <- true
+        | Month -> month <- value; hasDate <- true
+        | Day -> day <- value; hasDate <- true
+        | Hour -> hour <- value; hasTime <- true
+        | Minute -> minute <- value; hasTime <- true
+        | Second -> second <- value; hasTime <- true
+        | Unknown -> correct <- false
+    
+    do
+        if date.Length = format.Length then
+            correct <- true
+            Array.iter2 changePart date format
+
+    member this.Correct = correct
+    member this.ChangePart value part = changePart value part
+
+type private PatternPart =
+    | Separator of string
+    | Date of DatePart
+
+let Pattern(format : string) =
+    let buf = new System.Text.StringBuilder()
+    let isSep c = Array.exists ((=) c) separators
+    ()
+
+let private fixDateTimeFormat pattern (date : Literal) (format : Literal) =
+    let transDate =
+        let sep = "[-:./]"        
+        List.fold (flip replace) date.String <|
+        [ @"(:\d\d?:\d\d?)\.\d\d?\d?$", "$1"   // milliseconds are deleted
+          @"000(:\d\d?:\d\d?)$", "00$1" // hh = 000
+        // append zero to one digit
+          @"(^|\s)(\d" + sep + ")", "${1}0$2"
+          "(" + sep + @")(\d" + sep + ")", "${1}0$2"
+          "(" + sep + @")(\d(\s|$))", "${1}0$2"
+        ]
+    let transFormat = date.String.ToUpperInvariant().Replace("YYYY", "YY")
+    let dateTime = new DateTime(split transDate, split transFormat)
+    if dateTime.Correct then
+        ()
+
+let FixDateTimeFormat pattern (ast : Script) =
+    ast.IterChildren (function
+        | :? FunctionCall as fc when fc.Name.FullName.ToUpperInvariant() = "TO_DATE" ->
+            let exprParams = fc.Parameters |> List.map (fun param -> param.Expr)
+            match exprParams with
+            | [:? Literal as date; :? Literal as format] -> fixDateTimeFormat pattern date format
+            | _ -> ()
+        | _ -> ()
+    )
+8-931-232-08-93
