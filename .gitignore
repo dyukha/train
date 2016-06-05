@@ -1,5 +1,6 @@
 *.png
 *.jpg
+**/META-INF/**
 
 *.o
 *.suo
