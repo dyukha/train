@@ -37,7 +37,7 @@ fun calc(node : Node) : Int {
     return node.value
   if (node is NonTerm) {
     if (node.prod == -1) {
-      val list = calcList<Int>(node.children[0], ::calc)
+      val list = calcList(node.children[0], ::calc)
       return list.sum()
     }
     val left = calc(node.children[0])
