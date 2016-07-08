@@ -1,0 +1,13 @@
+Looks like arrays are different in C# and Java.
+First thing first, there are no generic arrays in Java, because types are erased (so there is no List<String>, but just List).
+  So, creation is different - in Java we create List[] and cast it.
+
+1) Let's insert Object into List<String>[] (cast the last one to Object[] to make it compilable).
+  In C# insertion is OK, and an error occures when we try to retrive an element. We cannot access it even from Object[] array.
+  In Java insertion fails, because there are type check while insertion.
+2)Let's insert List<Object> into List<String>[].
+  In C# - the same.
+  In Java - because of type erasion it's ok. We can even add Object into inserted List (if use casting).
+
+So, it's absolutely unclear, why use this strange limitation for generic arrays in Java.
+It gives no futher safe guaranties - we can avoid type checks, but it's definitely a deliberate action - when there are no strange casts, it's safe.
